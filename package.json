@@ -1,0 +1,36 @@
+{
+  "name": "videoportal",
+  "version": "1.0.0",
+  "description": "Kompletní videoportál s rolemi, oprávněními a admin panelem",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": [
+    "videoportal",
+    "express",
+    "nodejs",
+    "rbac",
+    "admin-panel",
+    "video-sharing"
+  ],
+  "author": "MiniMax Agent",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.4",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.7",
+    "bcrypt": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "homepage": "http://."
+}
