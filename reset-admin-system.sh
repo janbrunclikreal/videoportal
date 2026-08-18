@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Reset admin hesla pomocí systémového SQLite3
 

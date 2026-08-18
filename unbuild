@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_NAME="$(basename "$SCRIPT_DIR")"
+
+echo "==> Removing container: $APP_NAME"
+
+docker rm -f "$APP_NAME" 2>/dev/null || true
+
+echo "==> Container $APP_NAME removed."

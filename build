@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_NAME="$(basename "$SCRIPT_DIR")"
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <host-port:container-port>"
+    exit 1
+fi
+
+PORT_MAPPING="$1"
+
+cd "$SCRIPT_DIR"
+
+echo "==> Application: $APP_NAME"
+echo "==> Port mapping: $PORT_MAPPING"
+echo "==> Building image..."
+
+docker build \
+    -t "$APP_NAME" \
+    .
+
+echo "==> Removing old container..."
+
+docker rm -f "$APP_NAME" 2>/dev/null || true
+
+echo "==> Starting container..."
+
+docker run -d \
+    --name "$APP_NAME" \
+    -p "$PORT_MAPPING" \
+    "$APP_NAME"
+
+echo "==> Container running:"
+docker ps --filter "name=^${APP_NAME}$"
