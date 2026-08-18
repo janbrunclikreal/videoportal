@@ -768,7 +768,8 @@ app.use(express.static('public'));
 app.use(requestLogger);
 
 app.use(helmet({
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" } // Povolení pro externí načtení z jiných subdomén v síti
 }));
 
 app.use(cors());
