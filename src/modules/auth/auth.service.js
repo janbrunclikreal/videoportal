@@ -6,7 +6,8 @@ const bcrypt = require('bcrypt');
 const db = require('../../config/db');
 const { writeLog, LOG_TYPES } = require('../../config/logger');
 const { ROLES, assignRoleToUser } = require('./seed');
-const { recordConsent } = require('../legal/legal.service');
+// Lazy require – legal modul přichází v pozdějším commitu.
+const recordConsent = (entry) => require('../legal/legal.service').recordConsent(entry);
 
 // ===== Hesla =====
 // Bezpečné hashování přes bcrypt (salt + adaptive cost).
