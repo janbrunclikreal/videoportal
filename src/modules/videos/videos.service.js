@@ -76,6 +76,43 @@ function listCategories() {
   return db.all(`SELECT * FROM categories ORDER BY name`).rows;
 }
 
+// Fáze 1 – admin výpis videí (všechny stavy, včetně smazaných).
+// Rozšíření: existující `listPublic` se nemění. Nový admin filtr bere v úvahu
+// ?status= a ?q= (hledání v title/description) a volitelně i smazaná videa.
+function listForAdmin({ status = null, search = '', includeDeleted = false } = {}) {
+  const params = [];
+  const where = [];
+
+  if (!includeDeleted) {
+    where.push('v.deleted_at IS NULL');
+  }
+  if (status) {
+    where.push('v.status = ?');
+    params.push(status);
+  }
+  if (search) {
+    where.push('(v.title LIKE ? OR v.description LIKE ?)');
+    const s = `%${search}%`;
+    params.push(s, s);
+  }
+
+  const sql = `
+    SELECT v.*, u.username AS author_username, c.name AS category_name, c.icon AS category_icon
+    FROM videos v
+    LEFT JOIN users u ON u.id = v.user_id
+    LEFT JOIN categories c ON c.id = v.category_id
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    ORDER BY v.upload_date DESC
+    LIMIT 500
+  `;
+  return db.all(sql, params).rows.map((r) => ({
+    ...rowToVideo(r),
+    author_username: r.author_username,
+    category_name: r.category_name,
+    category_icon: r.category_icon,
+  }));
+}
+
 // ===== Upload flow (SPEC C) =====
 async function createUploadRequest({ user, title, description, categoryId, visibility, consentObtained, tosVersion, originalFilename, contentType }) {
   if (!VISIBILITY.includes(visibility)) {
@@ -170,6 +207,24 @@ function update({ videoId, user, canEditAll, patch }) {
   return getById(videoId);
 }
 
+// Fáze 1 – admin změna DSA stavu videa (published, flagged, takedown).
+// Dedikovaná cesta (ne PUT /api/videos/:id), aby se nepletla s user editací
+// a vyžadovala MODERATE_VIDEOS oprávnění.
+function setStatus({ videoId, status }) {
+  if (!STATUS.includes(status)) {
+    const e = new Error('Neplatný stav videa.'); e.status = 400; e.code = 'VALIDATION'; throw e;
+  }
+  const v = getById(videoId);
+  if (!v) { const e = new Error('Video nenalezeno.'); e.status = 404; throw e; }
+  // 'deleted' se nemění přes setStatus – na to je DELETE.
+  if (status === 'deleted') {
+    const e = new Error('Pro smazání videa použijte DELETE.'); e.status = 400; throw e;
+  }
+  db.run(`UPDATE videos SET status = ? WHERE id = ?`, [status, videoId]);
+  writeLog(LOG_TYPES.ADMIN, `Stav videa id=${videoId} změněn na ${status}`);
+  return getById(videoId);
+}
+
 async function softDelete({ videoId, user, canDeleteAny }) {
   const v = getById(videoId);
   if (!v) { const e = new Error('Video nenalezeno.'); e.status = 404; throw e; }
@@ -246,12 +301,14 @@ module.exports = {
   STATUS,
   rowToVideo,
   listPublic,
+  listForAdmin,
   getById,
   listByUser,
   listCategories,
   createUploadRequest,
   confirmUpload,
   update,
+  setStatus,
   softDelete,
   recordView,
   getStats,

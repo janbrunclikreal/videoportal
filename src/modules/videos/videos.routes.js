@@ -10,6 +10,9 @@ const router = express.Router();
 // Veřejné čtení
 router.get('/', controller.list);
 router.get('/categories', controller.categories);
+// Fáze 1 – admin výpis videí MUSÍ být definovaný před `/:id`, jinak by Express
+// matchnul :id='admin' a skončil v detail(). Vyžaduje oprávnění MODERATE_VIDEOS.
+router.get('/admin', requirePermission(PERMISSIONS.MODERATE_VIDEOS), controller.listForAdmin);
 router.get('/:id', controller.detail);
 
 // Upload flow (SPEC C)
@@ -27,6 +30,14 @@ router.post(
 // Edit / delete
 router.put('/:id', requirePermission(PERMISSIONS.UPLOAD_VIDEOS), controller.update);
 router.delete('/:id', requirePermission(PERMISSIONS.DELETE_OWN_VIDEOS), controller.remove);
+
+// Fáze 1 – admin akce: změna DSA stavu videa. Non-breaking – nový endpoint,
+// existující PUT/DELETE kontrakt zůstává.
+router.post(
+  '/:id/status',
+  requirePermission(PERMISSIONS.MODERATE_VIDEOS),
+  controller.setStatus
+);
 
 // Views / stats
 router.post('/:id/view', controller.recordView);

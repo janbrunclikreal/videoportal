@@ -27,6 +27,22 @@ async function list(req, res, next) {
   }
 }
 
+// Fáze 1 – admin výpis videí. Vyžaduje MODERATE_VIDEOS. Vrací i nepublikovaná
+// a volitelně smazaná videa, podporuje filtr podle statusu a hledání v textu.
+async function listForAdmin(req, res, next) {
+  try {
+    const { status, q, includeDeleted } = req.query;
+    const videos = videosService.listForAdmin({
+      status: status || null,
+      search: q || '',
+      includeDeleted: includeDeleted === '1' || includeDeleted === 'true',
+    });
+    res.json({ videos });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function detail(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -134,6 +150,19 @@ async function remove(req, res, next) {
   }
 }
 
+// Fáze 1 – admin akce: změna DSA stavu videa (published / flagged / takedown).
+async function setStatus(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { status } = req.body || {};
+    const video = videosService.setStatus({ videoId: id, status });
+    res.json({ video });
+  } catch (err) {
+    if (err.status) return next(new HttpError(err.status, err.code || 'ERROR', err.message));
+    next(err);
+  }
+}
+
 // ===== Statistiky / views =====
 async function recordView(req, res, next) {
   try {
@@ -189,12 +218,14 @@ async function playback(req, res, next) {
 
 module.exports = {
   list,
+  listForAdmin,
   detail,
   categories,
   myVideos,
   uploadRequest,
   confirmUpload,
   update,
+  setStatus,
   remove,
   recordView,
   stats,

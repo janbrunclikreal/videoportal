@@ -25,4 +25,22 @@ function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, create, remove };
+// Fáze 1 – PUT /api/categories/:id pro editaci (přejmenování, ikona, barva).
+// Stávající GET/POST/DELETE kontrakt se nemění.
+function update(req, res, next) {
+  try {
+    const { name, icon, color } = req.body || {};
+    const result = categoriesService.update({
+      id: parseInt(req.params.id, 10),
+      name,
+      icon,
+      color,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.status) return next(new HttpError(err.status, 'ERROR', err.message));
+    next(err);
+  }
+}
+
+module.exports = { list, create, remove, update };

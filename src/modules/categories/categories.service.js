@@ -22,4 +22,34 @@ function remove(id) {
   writeLog(LOG_TYPES.ADMIN, `Kategorie smazána (id=${id})`);
 }
 
-module.exports = { list, create, remove };
+// Fáze 1 – editace kategorie (přejmenování, změna ikony/barvy).
+// Non-breaking: nový service method, existující routes kontrakt se nemění.
+function update({ id, name, icon, color }) {
+  const { row } = db.get(`SELECT id FROM categories WHERE id = ?`, [id]);
+  if (!row) {
+    const e = new Error('Kategorie nenalezena.'); e.status = 404; throw e;
+  }
+  const fields = [];
+  const params = [];
+  if (name !== undefined) {
+    if (!name || !String(name).trim()) {
+      const e = new Error('Název nesmí být prázdný.'); e.status = 400; throw e;
+    }
+    fields.push('name = ?'); params.push(String(name).trim());
+  }
+  if (icon !== undefined) {
+    fields.push('icon = ?'); params.push(icon || '📁');
+  }
+  if (color !== undefined) {
+    fields.push('color = ?'); params.push(color || '#007bff');
+  }
+  if (fields.length === 0) {
+    const e = new Error('Nebyly předány žádné položky k aktualizaci.'); e.status = 400; throw e;
+  }
+  params.push(id);
+  db.run(`UPDATE categories SET ${fields.join(', ')} WHERE id = ?`, params);
+  writeLog(LOG_TYPES.ADMIN, `Kategorie upravena (id=${id})`, { fields: Object.keys({ name, icon, color }) });
+  return { id };
+}
+
+module.exports = { list, create, remove, update };

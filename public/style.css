@@ -325,3 +325,165 @@ body.app .narrow-w { max-width: 480px; }
 body.app .mt-4 { margin-top: 16px; }
 body.app .icon-input { width: 80px; }
 body.app .color-input { width: 110px; }
+
+
+/* ===========================================================
+   Fáze 1 – Toast notifikace
+   =========================================================== */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  font-size: 0.95em;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translateX(0); }
+.toast.hide { opacity: 0; transform: translateX(20px); }
+.toast-icon {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.9em;
+}
+.toast-msg { flex: 1 1 auto; line-height: 1.35; word-break: break-word; }
+.toast-close {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+  padding: 0 2px;
+}
+.toast-close:hover { color: var(--fg); }
+
+.toast-success { border-left-color: var(--success); }
+.toast-success .toast-icon { background: var(--success); color: #0d1117; }
+.toast-error { border-left-color: var(--danger); }
+.toast-error .toast-icon { background: var(--danger); color: #fff; }
+.toast-warning { border-left-color: #d29922; }
+.toast-warning .toast-icon { background: #d29922; color: #0d1117; }
+.toast-info { border-left-color: var(--accent); }
+.toast-info .toast-icon { background: var(--accent); color: #fff; }
+
+/* ===========================================================
+   Fáze 1 – Modální potvrzovací dialog
+   =========================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 20px;
+}
+.modal-overlay.show { opacity: 1; }
+.modal {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow);
+}
+.modal-title { margin: 0 0 8px; font-size: 1.15em; font-weight: 600; }
+.modal-body { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ===== Fáze 1 – Inline akce v tabulkách/adminu ===== */
+body.app .inline-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+body.app .inline-actions select {
+  padding: 4px 6px;
+  font-size: 0.9em;
+}
+body.app .pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 600;
+  background: #1c2128;
+  border: 1px solid var(--border);
+}
+body.app .pill.published { background: rgba(63, 185, 80, 0.15); color: #56d364; border-color: var(--success); }
+body.app .pill.flagged   { background: rgba(210, 153, 34, 0.18); color: #d29922; border-color: #d29922; }
+body.app .pill.takedown  { background: rgba(248, 81, 73, 0.18); color: #ff7b7b; border-color: var(--danger); }
+body.app .pill.deleted   { background: #21262d; color: var(--muted); }
+body.app .pill.pending   { background: rgba(47, 129, 247, 0.18); color: #79b8ff; border-color: var(--accent); }
+
+body.app .table-wrap { overflow-x: auto; }
+body.app .table-wrap table { min-width: 720px; }
+body.app .table-wrap td.actions { white-space: nowrap; }
+
+body.app .filter-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+body.app .filter-bar input,
+body.app .filter-bar select {
+  padding: 6px 8px;
+  font-size: 0.9em;
+}
+body.app .log-line {
+  display: grid;
+  grid-template-columns: 160px 80px 1fr;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font: 0.85em/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  word-break: break-word;
+}
+body.app .log-line:hover { background: #1c2128; }
+body.app .log-line .log-time { color: var(--muted); }
+body.app .log-line .log-type { font-weight: 600; }
+body.app .log-line .log-type-INFO     { color: #79b8ff; }
+body.app .log-line .log-type-ERROR    { color: #ff7b7b; }
+body.app .log-line .log-type-WARNING  { color: #d29922; }
+body.app .log-line .log-type-SECURITY { color: #ff7b7b; }
+body.app .log-line .log-type-USER     { color: #56d364; }
+body.app .log-line .log-type-ADMIN    { color: #d2a8ff; }
+body.app .log-line .log-type-ROLE     { color: #d2a8ff; }
+body.app .log-line .log-type-UPLOAD   { color: #79b8ff; }
+body.app .log-line .log-type-DATABASE { color: #56d364; }
+body.app .log-line .log-type-REQUEST  { color: var(--muted); }
