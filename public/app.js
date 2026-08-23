@@ -42,6 +42,10 @@
     health: () => request('GET', '/api/health'),
     me:     () => request('GET', '/api/users/me'),
     tos:    () => request('GET', '/api/legal/tos'),
+    logout: async () => {
+      await request('POST', '/api/auth/logout');
+      window.location.href = '/';
+    },
   };
 
   function escapeHtml(s) {
@@ -49,6 +53,23 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[c]));
   }
+
+// Odchycení submitu odhlašovacího formuláře
+  document.addEventListener('DOMContentLoaded', () => {
+    const logoutForm = document.querySelector('form.logout-form, form[action*="/api/auth/logout"]');
+    if (logoutForm) {
+      logoutForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api.post(logoutForm.getAttribute('action') || '/api/auth/logout');
+        } catch (err) {
+          console.error('Logout error:', err);
+        } finally {
+          window.location.href = '/';
+        }
+      });
+    }
+  });
 
   window.vp = { api, escapeHtml };
 })();
