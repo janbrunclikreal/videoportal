@@ -13,6 +13,9 @@ PORT_MAPPING="$1"
 
 cd "$SCRIPT_DIR"
 
+# Vytvoření složky pro trvalá data na hostiteli, pokud neexistuje
+mkdir -p "$SCRIPT_DIR/data"
+
 echo "==> Application: $APP_NAME"
 echo "==> Port mapping: $PORT_MAPPING"
 echo "==> Building image..."
@@ -27,9 +30,17 @@ docker rm -f "$APP_NAME" 2>/dev/null || true
 
 echo "==> Starting container..."
 
+ENV_ARG=()
+if [[ -f .env ]]; then
+    ENV_ARG=(--env-file .env)
+    echo "==> Loaded environment variables from .env"
+fi
+
 docker run -d \
     --name "$APP_NAME" \
     -p "$PORT_MAPPING" \
+    -v "$SCRIPT_DIR/data:/app/data" \
+    "${ENV_ARG[@]}" \
     "$APP_NAME"
 
 echo "==> Container running:"
