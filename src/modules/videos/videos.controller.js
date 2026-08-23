@@ -48,9 +48,14 @@ async function detail(req, res, next) {
     const id = parseInt(req.params.id, 10);
     const video = videosService.getById(id);
     if (!video) throw new HttpError(404, 'NOT_FOUND', 'Video nenalezeno');
-    if (video.status !== 'published' && (!req.user || (req.user.id !== video.user_id && !req.user.permissions.includes(PERMISSIONS.MODERATE_VIDEOS)))) {
-      throw new HttpError(403, 'FORBIDDEN', 'Toto video není veřejně dostupné');
-    }
+    // Fáze 1.1 – přísný access guard (status + visibility).
+    // Vracíme 404, ne 403, aby existence videa zůstala skrytá.
+    const canView = videosService.canViewVideo({
+      video,
+      user: req.user,
+      permissions: req.user ? req.user.permissions : null,
+    });
+    if (!canView) throw new HttpError(404, 'NOT_FOUND', 'Video nenalezeno');
     const playback_url = await storage.getPlaybackUrl(video);
     const userRating = req.user ? videosService.getUserRating({ videoId: id, userId: req.user.id }) : 0;
     res.json({ video: { ...video, playback_url }, userRating });
@@ -206,6 +211,15 @@ async function playback(req, res, next) {
     const id = parseInt(req.params.id, 10);
     const video = videosService.getById(id);
     if (!video) throw new HttpError(404, 'NOT_FOUND', 'Video nenalezeno');
+    // Fáze 1.1 – KRITICKÝ access guard pro playback. Tady se vydává presigned
+    // URL, takže tady se to musí striktně hlídat. Vracíme 404, ne 403, aby
+    // existence videa zůstala skrytá.
+    const canView = videosService.canViewVideo({
+      video,
+      user: req.user,
+      permissions: req.user ? req.user.permissions : null,
+    });
+    if (!canView) throw new HttpError(404, 'NOT_FOUND', 'Video nenalezeno');
     const url = await storage.getPlaybackUrl(video);
     if (!url) {
       throw new HttpError(503, 'STORAGE_UNAVAILABLE', 'S3 storage není nakonfigurováno');

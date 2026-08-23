@@ -34,7 +34,15 @@ function rowToVideo(row) {
 // ===== Čtení =====
 function listPublic({ search = '', categoryId = null, limit = 50, offset = 0 } = {}) {
   const params = [];
-  const where = [`v.status = 'published'`, `v.deleted_at IS NULL`];
+  // Fáze 1.1 – přísný access filtr:
+  //   - jen status='published' (NE pending/flagged/takedown/deleted)
+  //   - jen visibility='public' (NE unlisted/private)
+  // Vyhledávání a výpis kategorií tedy nikdy neukáže soukromá/UT videa.
+  const where = [
+    `v.status = 'published'`,
+    `v.deleted_at IS NULL`,
+    `v.visibility = 'public'`,
+  ];
 
   if (search) {
     where.push(`(v.title LIKE ? OR v.description LIKE ?)`);
@@ -62,6 +70,63 @@ function listPublic({ search = '', categoryId = null, limit = 50, offset = 0 } =
 function getById(id) {
   const { row } = db.get(`SELECT * FROM videos WHERE id = ? AND deleted_at IS NULL`, [id]);
   return rowToVideo(row);
+}
+
+/**
+ * Fáze 1.1 – centrální Access Control Guard pro zobrazení a přehrávání videí.
+ *
+ * Pravidla:
+ *  - status !== 'published'  → smí jen autor nebo moderate_videos.
+ *  - visibility === 'private' → smí jen autor nebo moderate_videos.
+ *  - visibility === 'unlisted' + status === 'published' → smí kdokoliv
+ *    (i anonym), ale NE ve veřejných výpisech.
+ *  - jinak (public + published) → kdokoliv.
+ *
+ * Vrací `true` pokud smí, `false` jinak. Interní API helper, nepoužívá se
+ * v controllerech, které potřebují rozlišit 404 vs 403.
+ */
+function canViewVideo({ video, user, permissions }) {
+  if (!video) return false;
+  // Non-published status (pending, flagged, takedown, deleted) → jen autor/moderátor.
+  if (video.status !== 'published') {
+    if (!user) return false;
+    if (user.id === video.user_id) return true;
+    if (permissions && permissions.includes('moderate_videos')) return true;
+    return false;
+  }
+  // published + private → jen autor/moderátor.
+  if (video.visibility === 'private') {
+    if (!user) return false;
+    if (user.id === video.user_id) return true;
+    if (permissions && permissions.includes('moderate_videos')) return true;
+    return false;
+  }
+  // published + public | unlisted → kdokoliv (anonym OK).
+  return true;
+}
+
+/**
+ * Smí daný uživatel vidět toto video v běžných (veřejných) výpisech –
+ * homepage, kategorie, hledání? unlisted a private vyřadíme vždy,
+ * non-published jen pro autor+moderátor.
+ */
+function canListInPublic({ video, user, permissions }) {
+  if (!video) return false;
+  // Vyhledávací filtr vždy vynechává private/unlisted.
+  if (video.visibility !== 'public') {
+    if (!user) return false;
+    if (user.id === video.user_id) return true;
+    if (permissions && permissions.includes('moderate_videos')) return true;
+    return false;
+  }
+  // visibility=public, ale status není published → jen autor/moderátor.
+  if (video.status !== 'published') {
+    if (!user) return false;
+    if (user.id === video.user_id) return true;
+    if (permissions && permissions.includes('moderate_videos')) return true;
+    return false;
+  }
+  return true;
 }
 
 function listByUser(userId) {
@@ -303,6 +368,8 @@ module.exports = {
   listPublic,
   listForAdmin,
   getById,
+  canViewVideo,
+  canListInPublic,
   listByUser,
   listCategories,
   createUploadRequest,

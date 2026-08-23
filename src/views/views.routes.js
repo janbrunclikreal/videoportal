@@ -64,13 +64,17 @@ function deny(user, perm) {
 
 // ===== Domů – seznam videí =====
 router.get('/', (req, res) => {
+  // Fáze 1.1 – přísný access filtr:
+  //   - status='published' (NE pending/flagged/takedown)
+  //   - visibility='public' (NE unlisted/private)
+  // Unlisted videa jsou dostupná jen přímým odkazem, private jen autorovi/moderátorovi.
   const { rows: videos } = db.all(`
     SELECT v.id, v.title, v.description, v.upload_date, v.views, v.filename, v.s3_key,
            u.username AS author, c.name AS category
     FROM videos v
     LEFT JOIN users u ON u.id = v.user_id
     LEFT JOIN categories c ON c.id = v.category_id
-    WHERE v.status = 'published' AND v.deleted_at IS NULL
+    WHERE v.status = 'published' AND v.deleted_at IS NULL AND v.visibility = 'public'
     ORDER BY v.upload_date DESC
     LIMIT 50
   `);
@@ -246,6 +250,24 @@ router.get('/video/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { row: v } = db.get(`SELECT v.*, u.username AS author FROM videos v LEFT JOIN users u ON u.id = v.user_id WHERE v.id = ?`, [id]);
   if (!v) return res.status(404).send(layout('Nenalezeno', '<p>Video neexistuje.</p>', req.user));
+  // Fáze 1.1 – přísný access guard (status + visibility). Vracíme 404, ne 403,
+  // aby existence videa zůstala skrytá. Stejná logika jako v API controlleru.
+  const canViewVideo = (() => {
+    if (v.status !== 'published') {
+      if (!req.user) return false;
+      if (req.user.id === v.user_id) return true;
+      if (req.user.permissions && req.user.permissions.includes(PERMISSIONS.MODERATE_VIDEOS)) return true;
+      return false;
+    }
+    if (v.visibility === 'private') {
+      if (!req.user) return false;
+      if (req.user.id === v.user_id) return true;
+      if (req.user.permissions && req.user.permissions.includes(PERMISSIONS.MODERATE_VIDEOS)) return true;
+      return false;
+    }
+    return true; // public/unlisted + published → kdokoliv
+  })();
+  if (!canViewVideo) return res.status(404).send(layout('Nenalezeno', '<p>Video neexistuje.</p>', req.user));
   const playbackUrl = v.s3_key ? `/api/videos/${id}/playback` : `/uploads/${v.filename}`;
 
   // SSR agregace lajků / dislajků pro tohle video.
