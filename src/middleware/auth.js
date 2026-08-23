@@ -5,7 +5,7 @@ const authService = require('../modules/auth/auth.service');
 const { writeLog, LOG_TYPES } = require('../config/logger');
 const config = require('../config');
 
-function loadSessionUser(req, res, next) {
+async function loadSessionUser(req, res, next) {
   const sessionId = req.cookies && req.cookies[config.session.cookieName];
   const session = authService.getSession(sessionId);
   if (!session) {
@@ -13,7 +13,7 @@ function loadSessionUser(req, res, next) {
     return next();
   }
   try {
-    const user = authService.loadUserWithRoles(session.userId);
+    const user = await authService.loadUserWithRoles(session.userId);
     req.user = user || null;
   } catch (err) {
     writeLog(LOG_TYPES.ERROR, 'loadSessionUser selhal', { error: err.message });

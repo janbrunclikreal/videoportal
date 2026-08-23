@@ -82,8 +82,8 @@ async function deleteUser(userId) {
 }
 
 // ===== Role / permissions loader =====
-function loadUserWithRoles(userId) {
-  const user = findById(userId);
+async function loadUserWithRoles(userId) {
+  const user = await findById(userId);
   if (!user) return null;
 
   const { rows: roleRows } = db.all(
