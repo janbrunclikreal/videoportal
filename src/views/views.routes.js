@@ -237,26 +237,43 @@ const id = parseInt(req.params.id, 10);
   if (!v) return res.status(404).send(layout('Nenalezeno', '<p>Video neexistuje.</p>', req.user));
   const playbackUrl = v.s3_key ? `/api/videos/${id}/playback` : `/uploads/${v.filename}`;
 
+  // SSR agregace lajků / dislajků pro tohle video. Kdyby se tlačítka
+  // inicializovala jen z response rateVideo(), první render by vždy
+  // ukazoval nula a uživatel by čekal na první fetch.
+  const { row: ratingAgg } = db.get(
+    `SELECT
+       COALESCE(SUM(CASE WHEN rating =  1 THEN 1 ELSE 0 END), 0) AS likes,
+       COALESCE(SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END), 0) AS dislikes
+     FROM ratings WHERE video_id = ?`,
+    [id]
+  );
+  const userRating = req.user
+    ? ((db.get(`SELECT rating FROM ratings WHERE video_id = ? AND user_id = ?`,
+        [id, req.user.id]).row || {}).rating || 0)
+    : 0;
+  const canRate = !!req.user;
+
   const body = `
     <h1>${escape(v.title)}</h1>
     <p class="muted">
-      👤 ${escape(v.author || 'Anonym')} · 
-      👁 <span id="view-count">${v.views || 0}</span> · 
-      ${v.status} · 
+      👤 ${escape(v.author || 'Anonym')} ·
+      👁 <span id="view-count">${v.views || 0}</span> ·
+      ${v.status} ·
       ${escape(v.visibility)}
     </p>
     ${v.description ? `<p>${escape(v.description)}</p>` : ''}
-    
+
     <video id="player" controls src="${escape(playbackUrl)}" style="width: 100%; max-height: 480px;"></video>
-    
+
     <div class="video-actions" style="margin: 10px 0;">
-     <button id="btn-like" onclick="rateVideo(1)">👍 <span id="like-count">0</span></button>
-     <button id="btn-dislike" onclick="rateVideo(-1)">👎 <span id="dislike-count">0</span></button>
+     <button id="btn-like" data-value="1" class="like-btn${userRating ===  1 ? ' active' : ''}${canRate ? '' : ' disabled'}">👍 <span id="like-count">${ratingAgg.likes || 0}</span></button>
+     <button id="btn-dislike" data-value="-1" class="dislike-btn${userRating === -1 ? ' active' : ''}${canRate ? '' : ' disabled'}">👎 <span id="dislike-count">${ratingAgg.dislikes || 0}</span></button>
+     <span id="rate-msg" class="muted" style="margin-left: 8px;"></span>
     </div>
 
     <h3>💬 Komentáře</h3>
     <div id="comments" class="card"><em class="muted">Načítám…</em></div>
-    
+
     ${
       req.user
         ? `<form id="cform" class="card" style="margin-top: 15px;">
@@ -267,50 +284,113 @@ const id = parseInt(req.params.id, 10);
     }
 
     <script>
-      // 1. Zhlédnutí videa při spuštění
+      // 1. Zhlédnutí videa – backend endpoint je /api/videos/:id/view (jednotné číslo).
       const player = document.getElementById('player');
       if (player) {
         player.addEventListener('play', async () => {
-          await vp.api.post('/api/videos/${id}/views', { duration: 0, completed: false });
+          await vp.api.post('/api/videos/${id}/view', { duration: 0, completed: false });
         }, { once: true });
       }
 
-      // 2. Hodnocení videa
-      async function rateVideo(rating) {
-      const res = await vp.api.post('/api/videos/${id}/rate', { rating });
-      if (res.ok && res.data) {
-        document.getElementById('like-count').textContent = res.data.likes;
-        document.getElementById('dislike-count').textContent = res.data.dislikes;
-     } else if (res.status === 401) {
-        alert('Pro hodnocení se musíte přihlásit.');
-     } else {
-       alert('Chyba při ukládání hodnocení.');
-     }
-}
-      // 3. Načítání komentářů (dostupné pro všechny)
-      async function loadComments() {
-        const { data } = await vp.api.get('/api/videos/${id}/comments');
-        const out = (data?.comments || []).map(c => 
-          '<div class="card" style="margin-bottom: 8px;">' +
-            '<b>' + vp.escapeHtml(c.author_username || 'Anonym') + '</b>' +
-            '<div>' + vp.escapeHtml(c.content) + '</div>' +
-            '<small class="muted">' + new Date(c.created_at).toLocaleString() + ' · 👍 ' + (c.likes || 0) + ' 👎 ' + (c.dislikes || 0) + '</small>' +
-          '</div>'
-        ).join('') || '<p class="muted">Žádné komentáře.</p>';
-        
-        document.getElementById('comments').innerHTML = out;
+      // 2. Hodnocení videa – tlačítka ⬆/⬇, toggle (klik na aktivní tlačítko = unlike).
+      const btnLike = document.getElementById('btn-like');
+      const btnDislike = document.getElementById('btn-dislike');
+      const likeSpan = document.getElementById('like-count');
+      const disSpan  = document.getElementById('dislike-count');
+      const rateMsg  = document.getElementById('rate-msg');
+
+      async function rateVideo(value) {
+        if (!${canRate}) {
+          window.location.href = '/login';
+          return;
+        }
+        const wasActive = (value === 1 && btnLike.classList.contains('active'))
+                      || (value === -1 && btnDislike.classList.contains('active'));
+        const rating = wasActive ? 0 : value;
+        btnLike.disabled = true;
+        btnDislike.disabled = true;
+        const res = await vp.api.post('/api/videos/${id}/rate', { rating });
+        if (res.ok && res.data) {
+          likeSpan.textContent = res.data.likes;
+          disSpan.textContent  = res.data.dislikes;
+          btnLike.classList.remove('active');
+          btnDislike.classList.remove('active');
+          if (!wasActive) {
+            (value === 1 ? btnLike : btnDislike).classList.add('active');
+          }
+          rateMsg.textContent = '✓ uloženo';
+          setTimeout(() => { rateMsg.textContent = ''; }, 1200);
+        } else if (res.status === 401) {
+          rateMsg.textContent = 'Pro hodnocení se musíte přihlásit.';
+        } else {
+          rateMsg.textContent = (res.data && res.data.error) || 'Chyba při ukládání hodnocení.';
+        }
+        btnLike.disabled = false;
+        btnDislike.disabled = false;
+      }
+      btnLike.addEventListener('click', () => rateVideo(1));
+      btnDislike.addEventListener('click', () => rateVideo(-1));
+
+      // 3. Načítání komentářů (dostupné pro všechny).
+      function renderComment(c) {
+        const canLike = ${canRate};
+        const liked  = c.user_like ===  1;
+        const disliked = c.user_like === -1;
+        return '<div class="card" data-cid="' + c.id + '" style="margin-bottom: 8px;">' +
+          '<div><b>' + vp.escapeHtml(c.author_username || 'Anonym') + '</b></div>' +
+          '<div class="comment-body">' + vp.escapeHtml(c.content) + '</div>' +
+          '<small class="muted">' + new Date(c.created_at).toLocaleString() + '</small>' +
+          '<div class="comment-actions" style="margin-top: 6px; display: flex; gap: 6px;">' +
+            (canLike
+              ? '<button class="like-btn'    + (liked     ? ' active' : '') + '" data-cid="' + c.id + '" data-value="1">👍 <span data-likes>'    + (c.likes    || 0) + '</span></button>' +
+                '<button class="dislike-btn' + (disliked  ? ' active' : '') + '" data-cid="' + c.id + '" data-value="-1">👎 <span data-dislikes>' + (c.dislikes || 0) + '</span></button>'
+              : '<span class="muted">👍 ' + (c.likes    || 0) + ' / 👎 ' + (c.dislikes || 0) + '</span>') +
+          '</div>' +
+        '</div>';
       }
 
-      // 4. Obsluha formuláře pro nový komentář
+      async function loadComments() {
+        const { data } = await vp.api.get('/api/videos/${id}/comments');
+        const comments = (data && data.comments) || [];
+        document.getElementById('comments').innerHTML = comments.length
+          ? comments.map(renderComment).join('')
+          : '<p class="muted">Žádné komentáře.</p>';
+      }
+
+      // 4. Delegace klikání na lajky/dislajky u komentářů.
+      const commentsEl = document.getElementById('comments');
+      commentsEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-cid]');
+        if (!btn) return;
+        if (!${canRate}) { window.location.href = '/login'; return; }
+        btn.disabled = true;
+        const cid = btn.dataset.cid;
+        const value = parseInt(btn.dataset.value, 10);
+        const wasActive = btn.classList.contains('active');
+        const payload = wasActive ? 0 : value;
+        const res = await vp.api.post('/api/comments/' + cid + '/like', { value: payload });
+        if (res.ok && res.data) {
+          const card = btn.closest('[data-cid]');
+          const likeBtn    = card.querySelector('.like-btn span');
+          const dislikeBtn = card.querySelector('.dislike-btn span');
+          if (likeBtn)    likeBtn.textContent    = res.data.likes    || 0;
+          if (dislikeBtn) dislikeBtn.textContent = res.data.dislikes || 0;
+          card.querySelectorAll('button[data-cid]').forEach(b => b.classList.remove('active'));
+          if (!wasActive) btn.classList.add('active');
+        }
+        btn.disabled = false;
+      });
+
+      // 5. Obsluha formuláře pro nový komentář.
       const cform = document.getElementById('cform');
       if (cform) {
         cform.onsubmit = async (e) => {
           e.preventDefault();
           const fd = new FormData(e.target);
           const { ok } = await vp.api.post('/api/comments', { video_id: ${id}, content: fd.get('content') });
-          if (ok) { 
-            e.target.reset(); 
-            loadComments(); 
+          if (ok) {
+            e.target.reset();
+            loadComments();
           }
         };
       }

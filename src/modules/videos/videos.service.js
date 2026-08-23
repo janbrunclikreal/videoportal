@@ -210,12 +210,19 @@ function getStats(videoId) {
 
 // ===== Hodnocení =====
 function rateVideo({ videoId, userId, value }) {
-  if (![-1, 1].includes(value)) { const e = new Error('Hodnota musí být -1 nebo 1.'); e.status = 400; throw e; }
-  db.run(
-    `INSERT INTO ratings (video_id, user_id, rating) VALUES (?, ?, ?)
-     ON CONFLICT(video_id, user_id) DO UPDATE SET rating = excluded.rating, created_at = CURRENT_TIMESTAMP`,
-    [videoId, userId, value]
-  );
+  // value: 1 = like, -1 = dislike, 0 = unlike (smazat vlastní rating).
+  if (![-1, 0, 1].includes(value)) {
+    const e = new Error('Hodnota musí být -1, 0 nebo 1.'); e.status = 400; e.code = 'VALIDATION'; throw e;
+  }
+  if (value === 0) {
+    db.run(`DELETE FROM ratings WHERE video_id = ? AND user_id = ?`, [videoId, userId]);
+  } else {
+    db.run(
+      `INSERT INTO ratings (video_id, user_id, rating) VALUES (?, ?, ?)
+       ON CONFLICT(video_id, user_id) DO UPDATE SET rating = excluded.rating, created_at = CURRENT_TIMESTAMP`,
+      [videoId, userId, value]
+    );
+  }
   const { row: agg } = db.get(
     `SELECT
        COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) AS likes,
