@@ -232,39 +232,91 @@ router.get('/upload', (req, res) => {
 
 // ===== Video detail =====
 router.get('/video/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
+const id = parseInt(req.params.id, 10);
   const { row: v } = db.get(`SELECT v.*, u.username AS author FROM videos v LEFT JOIN users u ON u.id = v.user_id WHERE v.id = ?`, [id]);
   if (!v) return res.status(404).send(layout('Nenalezeno', '<p>Video neexistuje.</p>', req.user));
   const playbackUrl = v.s3_key ? `/api/videos/${id}/playback` : `/uploads/${v.filename}`;
+
   const body = `
     <h1>${escape(v.title)}</h1>
-    <p class="muted">👤 ${escape(v.author || 'Anonym')} · 👁 ${v.views} · ${v.status} · ${escape(v.visibility)}</p>
+    <p class="muted">
+      👤 ${escape(v.author || 'Anonym')} · 
+      👁 <span id="view-count">${v.views || 0}</span> · 
+      ${v.status} · 
+      ${escape(v.visibility)}
+    </p>
     ${v.description ? `<p>${escape(v.description)}</p>` : ''}
-    <video controls src="${escape(playbackUrl)}"></video>
+    
+    <video id="player" controls src="${escape(playbackUrl)}" style="width: 100%; max-height: 480px;"></video>
+    
+    <div class="video-actions" style="margin: 10px 0;">
+     <button id="btn-like" onclick="rateVideo(1)">👍 <span id="like-count">0</span></button>
+     <button id="btn-dislike" onclick="rateVideo(-1)">👎 <span id="dislike-count">0</span></button>
+    </div>
+
     <h3>💬 Komentáře</h3>
     <div id="comments" class="card"><em class="muted">Načítám…</em></div>
+    
     ${
       req.user
-        ? `<form id="cform" class="card">
-             <textarea name="content" rows="3" placeholder="Váš komentář…" required></textarea>
-             <p><button>Odeslat</button></p>
-           </form>
-           <script>
-             async function loadComments() {
-               const { data } = await vp.api.get('/api/videos/${id}/comments');
-               const out = (data.comments || []).map(c => '<div class="card"><b>'+vp.escapeHtml(c.author_username || 'Anonym')+'</b><div>'+vp.escapeHtml(c.content)+'</div><small class="muted">'+new Date(c.created_at).toLocaleString()+' · 👍 '+c.likes+' 👎 '+c.dislikes+'</small></div>').join('') || '<p class="muted">Žádné komentáře.</p>';
-               document.getElementById('comments').innerHTML = out;
-             }
-             document.getElementById('cform').onsubmit = async (e) => {
-               e.preventDefault();
-               const fd = new FormData(e.target);
-               const { ok } = await vp.api.post('/api/comments', { video_id: ${id}, content: fd.get('content') });
-               if (ok) { e.target.reset(); loadComments(); }
-             };
-             loadComments();
-           </script>`
+        ? `<form id="cform" class="card" style="margin-top: 15px;">
+             <textarea name="content" rows="3" placeholder="Váš komentář…" required style="width: 100%;"></textarea>
+             <p><button type="submit">Odeslat</button></p>
+           </form>`
         : '<p class="muted">Pro komentování se <a href="/login">přihlaste</a>.</p>'
     }
+
+    <script>
+      // 1. Zhlédnutí videa při spuštění
+      const player = document.getElementById('player');
+      if (player) {
+        player.addEventListener('play', async () => {
+          await vp.api.post('/api/videos/${id}/views', { duration: 0, completed: false });
+        }, { once: true });
+      }
+
+      // 2. Hodnocení videa
+      async function rateVideo(rating) {
+      const res = await vp.api.post('/api/videos/${id}/rate', { rating });
+      if (res.ok && res.data) {
+        document.getElementById('like-count').textContent = res.data.likes;
+        document.getElementById('dislike-count').textContent = res.data.dislikes;
+     } else if (res.status === 401) {
+        alert('Pro hodnocení se musíte přihlásit.');
+     } else {
+       alert('Chyba při ukládání hodnocení.');
+     }
+}
+      // 3. Načítání komentářů (dostupné pro všechny)
+      async function loadComments() {
+        const { data } = await vp.api.get('/api/videos/${id}/comments');
+        const out = (data?.comments || []).map(c => 
+          '<div class="card" style="margin-bottom: 8px;">' +
+            '<b>' + vp.escapeHtml(c.author_username || 'Anonym') + '</b>' +
+            '<div>' + vp.escapeHtml(c.content) + '</div>' +
+            '<small class="muted">' + new Date(c.created_at).toLocaleString() + ' · 👍 ' + (c.likes || 0) + ' 👎 ' + (c.dislikes || 0) + '</small>' +
+          '</div>'
+        ).join('') || '<p class="muted">Žádné komentáře.</p>';
+        
+        document.getElementById('comments').innerHTML = out;
+      }
+
+      // 4. Obsluha formuláře pro nový komentář
+      const cform = document.getElementById('cform');
+      if (cform) {
+        cform.onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const { ok } = await vp.api.post('/api/comments', { video_id: ${id}, content: fd.get('content') });
+          if (ok) { 
+            e.target.reset(); 
+            loadComments(); 
+          }
+        };
+      }
+
+      loadComments();
+    </script>
   `;
   res.send(layout(v.title, body, req.user));
 });
