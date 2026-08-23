@@ -181,7 +181,7 @@ async function playback(req, res, next) {
     if (!url) {
       throw new HttpError(503, 'STORAGE_UNAVAILABLE', 'S3 storage není nakonfigurováno');
     }
-    res.json({ url });
+    return res.redirect(url);
   } catch (err) {
     next(err);
   }

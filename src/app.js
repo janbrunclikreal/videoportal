@@ -67,7 +67,7 @@ function buildApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/videos', videosRoutes);
-  app.use(commentsRoutes); // mixované cesty (/api/videos/:videoId/comments, /api/comments)
+  app.use('/api', commentsRoutes); 
   app.use('/api/legal', legalRoutes);
   app.use('/api/categories', categoriesRoutes);
   app.use('/api/system', systemRoutes);

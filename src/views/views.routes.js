@@ -29,6 +29,7 @@ function layout(title, body, user = null) {
   <link rel="icon" href="/favicon.ico">
   <link rel="stylesheet" href="/style.css">
   <title>${escape(title)} – VideoPortal v2</title>
+  <script src="/app.js"></script>
 </head>
 <body class="app">
   <header>
@@ -40,7 +41,6 @@ function layout(title, body, user = null) {
     ${navUser}
   </header>
   <main>${body}</main>
-  <script src="/app.js"></script>
 </body>
 </html>`;
 }
