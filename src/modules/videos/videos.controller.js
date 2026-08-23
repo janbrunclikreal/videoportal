@@ -172,6 +172,21 @@ function rate(req, res, next) {
   }
 }
 
+async function playback(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const video = videosService.getById(id);
+    if (!video) throw new HttpError(404, 'NOT_FOUND', 'Video nenalezeno');
+    const url = await storage.getPlaybackUrl(video);
+    if (!url) {
+      throw new HttpError(503, 'STORAGE_UNAVAILABLE', 'S3 storage není nakonfigurováno');
+    }
+    res.json({ url });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   list,
   detail,
@@ -184,4 +199,5 @@ module.exports = {
   recordView,
   stats,
   rate,
+  playback,
 };

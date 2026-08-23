@@ -107,28 +107,28 @@ const PERMISSION_DISPLAY = Object.freeze({
 function seedRolesAndPermissions() {
   writeLog(LOG_TYPES.INFO, 'Seed rolí a oprávnění...');
 
-  const insertRole = db.run(
-    `INSERT OR REPLACE INTO roles (id, name, display_name, color) VALUES (?, ?, ?, ?)`
-  );
   for (const role of Object.values(ROLES)) {
-    insertRole.run([role.id, role.name, role.display_name, role.color]);
+    db.run(
+      `INSERT OR REPLACE INTO roles (id, name, display_name, color) VALUES (?, ?, ?, ?)`,
+      [role.id, role.name, role.display_name, role.color]
+    );
   }
 
-  const insertPerm = db.run(
-    `INSERT OR REPLACE INTO permissions (name, display_name, category) VALUES (?, ?, ?)`
-  );
   for (const [category, perms] of Object.entries(PERMISSION_CATEGORIES)) {
     for (const name of perms) {
-      insertPerm.run([name, PERMISSION_DISPLAY[name], category]);
+      db.run(
+        `INSERT OR REPLACE INTO permissions (name, display_name, category) VALUES (?, ?, ?)`,
+        [name, PERMISSION_DISPLAY[name], category]
+      );
     }
   }
 
-  const insertRolePerm = db.run(
-    `INSERT OR REPLACE INTO role_permissions (role_id, permission_name) VALUES (?, ?)`
-  );
   for (const role of Object.values(ROLES)) {
     for (const perm of role.permissions) {
-      insertRolePerm.run([role.id, perm]);
+      db.run(
+        `INSERT OR REPLACE INTO role_permissions (role_id, permission_name) VALUES (?, ?)`,
+        [role.id, perm]
+      );
     }
   }
 }
@@ -145,10 +145,13 @@ function seedCategories() {
     { name: 'Sport', icon: '⚽', color: '#feca57' },
     { name: 'Cestování', icon: '✈️', color: '#48dbfb' },
   ];
-  const insert = db.run(
-    `INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)`
-  );
-  for (const c of defaults) insert.run([c.name, c.icon, c.color]);
+  for (const c of defaults) {
+    db.run(`INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)`, [
+      c.name,
+      c.icon,
+      c.color,
+    ]);
+  }
   writeLog(LOG_TYPES.INFO, `Vloženo ${defaults.length} výchozích kategorií`);
 }
 

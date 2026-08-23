@@ -32,6 +32,7 @@ router.delete('/:id', requirePermission(PERMISSIONS.DELETE_OWN_VIDEOS), controll
 router.post('/:id/view', controller.recordView);
 router.get('/:id/stats', controller.stats);
 router.post('/:id/rate', requireLogin, controller.rate);
+router.get('/:id/playback', controller.playback);
 
 // Vlastní videa
 router.get('/me/list', requireLogin, controller.myVideos);
