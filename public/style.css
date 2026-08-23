@@ -1,0 +1,327 @@
+/* VideoPortal v2 – veřejné statické styly (landing page).
+   Interní HTML pohledy (views.routes.js) mají vlastní inline styly
+   v <style> bloku kvůli jednoduchosti. */
+
+:root {
+  --bg: #0f1419;
+  --bg-elev: #161b22;
+  --border: #30363d;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --accent: #2f81f7;
+  --accent-hover: #4493f8;
+  --success: #3fb950;
+  --danger: #f85149;
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --radius: 6px;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.3);
+  --max-w: 960px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: auto;
+  font-size: 0.9em;
+}
+
+/* ===== Hero ===== */
+.hero {
+  background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 56px 20px;
+}
+.hero-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+.hero h1 {
+  margin: 0 0 12px;
+  font-size: 2.4em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.hero .ver {
+  color: var(--muted);
+  font-size: 0.55em;
+  font-weight: 500;
+  vertical-align: super;
+  margin-left: 4px;
+}
+.lede {
+  font-size: 1.1em;
+  color: #c9d1d9;
+  max-width: 640px;
+  margin: 0 0 24px;
+}
+.cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 0; }
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--fg);
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover { background: #1f242c; text-decoration: none; }
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* ===== Main ===== */
+main {
+  max-width: var(--max-w);
+  margin: 32px auto;
+  padding: 0 20px;
+}
+section { margin-bottom: 36px; }
+section h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+ul.grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+ul.grid li {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 0.95em;
+}
+ul.grid li a { color: var(--fg); }
+ul.grid li a code { background: transparent; padding: 0; border: 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+th, td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+th {
+  background: #1c2128;
+  color: #c9d1d9;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #1c2128; }
+td code { white-space: nowrap; }
+
+/* ===== Footer ===== */
+footer {
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+/* ===========================================================
+   App shell – interní HTML pohledy (views.routes.js)
+   =========================================================== */
+body.app {
+  /* Tělo aplikace (ne landing page) – bez odsazení, větší hlavička. */
+}
+body.app > header {
+  padding: 12px 20px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+body.app > header a,
+body.app > header button.link {
+  color: var(--accent);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+body.app > header a:hover,
+body.app > header button.link:hover { text-decoration: underline; }
+body.app > header .brand {
+  font-weight: 600;
+  color: var(--fg);
+  margin-right: 12px;
+}
+body.app > header .ver {
+  color: var(--muted);
+  font-size: 0.7em;
+  font-weight: 500;
+  vertical-align: super;
+  margin-left: 2px;
+}
+body.app > header .spacer { flex: 1; }
+body.app > header .user { color: var(--muted); margin-right: 8px; }
+body.app > header .logout-form { display: inline; margin: 0; padding: 0; }
+
+body.app > main {
+  max-width: var(--max-w);
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+body.app h1 { font-size: 1.7em; font-weight: 600; margin: 0 0 16px; }
+body.app h3 { font-size: 1.1em; font-weight: 600; margin: 16px 0 8px; }
+
+/* ===== Formuláře ===== */
+body.app input,
+body.app textarea,
+body.app select,
+body.app button {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--fg);
+}
+body.app button {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 500;
+}
+body.app button:hover { background: var(--accent-hover); }
+body.app button.link {
+  background: none;
+  color: var(--accent);
+  border: 0;
+  padding: 0;
+}
+body.app button.del { background: var(--danger); }
+body.app button.del:hover { background: #ff6b6b; }
+body.app button.secondary {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+body.app button.secondary:hover { background: #1f242c; }
+
+body.app .card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+body.app .row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+body.app .muted { color: var(--muted); }
+body.app .danger { color: var(--danger); }
+
+body.app label {
+  display: block;
+  font-size: 0.9em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+body.app label > input,
+body.app label > textarea,
+body.app label > select { display: block; margin-top: 4px; width: 100%; max-width: 480px; }
+
+body.app table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+body.app th, body.app td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+body.app th { color: #c9d1d9; font-weight: 600; font-size: 0.9em; }
+body.app tbody tr:hover { background: #1c2128; }
+
+body.app .alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+body.app .alert.success { border-color: var(--success); color: #56d364; }
+body.app .alert.error { border-color: var(--danger); color: #ff7b7b; }
+
+body.app pre { font-size: 0.88em; }
+
+body.app video {
+  display: block;
+  width: 100%;
+  max-width: 800px;
+  border-radius: var(--radius);
+  background: #000;
+}
+
+/* Utility třídy pro view šablony */
+body.app .narrow { max-width: 400px; }
+body.app .narrow-w { max-width: 480px; }
+body.app .mt-4 { margin-top: 16px; }
+body.app .icon-input { width: 80px; }
+body.app .color-input { width: 110px; }

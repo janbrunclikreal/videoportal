@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VideoPortal v2</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <h1>🎬 VideoPortal <span class="ver">v2</span></h1>
+      <p class="lede">
+        Modulární Express backend s S3 presigned uploads, RBAC a GDPR/DSA auditem.
+        Tato stránka je čistě statická – dynamické pohledy (video feed, admin, profil)
+        servíruje <code>src/views/views.routes.js</code>.
+      </p>
+      <p class="cta">
+        <a class="btn primary" href="/">Otevřít aplikaci</a>
+        <a class="btn" href="/api/health">Health</a>
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>📚 Rychlé odkazy</h2>
+      <ul class="grid">
+        <li><a href="/">/</a> – domů (seznam videí)</li>
+        <li><a href="/login">/login</a> – přihlášení</li>
+        <li><a href="/register">/register</a> – registrace</li>
+        <li><a href="/upload">/upload</a> – nahrát video (S3 flow)</li>
+        <li><a href="/profile">/profile</a> – profil</li>
+        <li><a href="/admin">/admin</a> – admin (vyžaduje práva)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>🔌 API</h2>
+      <table>
+        <thead><tr><th>Metoda</th><th>Cesta</th><th>Popis</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/health</code></td><td>health check + s3 stav</td></tr>
+          <tr><td>POST</td><td><code>/api/auth/login</code></td><td>přihlášení (session cookie)</td></tr>
+          <tr><td>POST</td><td><code>/api/auth/register</code></td><td>registrace (když <code>ALLOW_PUBLIC_REGISTRATION=true</code>)</td></tr>
+          <tr><td>POST</td><td><code>/api/auth/logout</code></td><td>odhlášení</td></tr>
+          <tr><td>GET</td><td><code>/api/users/me</code></td><td>aktuální uživatel</td></tr>
+          <tr><td>GET</td><td><code>/api/videos</code></td><td>veřejný feed (search, category)</td></tr>
+          <tr><td>GET</td><td><code>/api/videos/:id</code></td><td>detail videa + playback URL</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/upload-request</code></td><td>S3 presigned URL (SPEC C, krok 1)</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/:id/confirm</code></td><td>potvrzení uploadu (SPEC C, krok 3)</td></tr>
+          <tr><td>PUT</td><td><code>/api/videos/:id</code></td><td>editace metadat</td></tr>
+          <tr><td>DELETE</td><td><code>/api/videos/:id</code></td><td>soft delete</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/:id/view</code></td><td>zaznamenat zhlédnutí</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/:id/rate</code></td><td>like / dislike (rating = ±1)</td></tr>
+          <tr><td>GET</td><td><code>/api/videos/:id/comments</code></td><td> komentáře k videu</td></tr>
+          <tr><td>POST</td><td><code>/api/comments</code></td><td>vytvořit komentář</td></tr>
+          <tr><td>POST</td><td><code>/api/comments/:id/like</code></td><td>like / dislike komentáře</td></tr>
+          <tr><td>GET</td><td><code>/api/legal/tos</code></td><td>aktuální verze podmínek</td></tr>
+          <tr><td>GET</td><td><code>/api/legal/me/consents</code></td><td>GDPR audit vlastních souhlasů</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/:id/flag</code></td><td>DSA nahlášení videa</td></tr>
+          <tr><td>POST</td><td><code>/api/videos/:id/takedown</code></td><td>moderátorský takedown</td></tr>
+          <tr><td>GET</td><td><code>/api/categories</code></td><td>seznam kategorií</td></tr>
+          <tr><td>POST</td><td><code>/api/categories</code></td><td>vytvořit kategorii (MANAGE_CATEGORIES)</td></tr>
+          <tr><td>GET</td><td><code>/api/system/logs</code></td><td>systémové logy (VIEW_SYSTEM_LOGS)</td></tr>
+          <tr><td>GET</td><td><code>/api/system/stats</code></td><td>statistiky pro admin dashboard</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>🔐 Výchozí admin</h2>
+      <p>
+        Při prvním startu se automaticky vytvoří účet
+        <code>admin / admin123</code> s plnými právy.
+        V produkci <strong>heslo okamžitě změňte</strong> a nastavte
+        <code>ALLOW_PUBLIC_REGISTRATION=false</code> v <code>.env</code>.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>VideoPortal v2 · Node.js 20+ · Express · better-sqlite3 · S3 / R2 · MIT</p>
+  </footer>
+</body>
+</html>
