@@ -47,10 +47,32 @@ const config = Object.freeze({
   }),
 
   security: Object.freeze({
-    allowPublicRegistration: bool(process.env.ALLOW_PUBLIC_REGISTRATION, true),
-  }),
+  allowPublicRegistration: bool(process.env.ALLOW_PUBLIC_REGISTRATION, true),
+  // Fáze 2: CORS whitelist. V produkci nastavit
+  //   ALLOWED_ORIGINS="https://app.example.com,https://admin.example.com"
+  allowedOrigins: (process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+      : [
+          'https://videoportal.server.lan',
+          'http://videoportal.server.lan',
+          'https://videoportal.server.lan:8082',
+          'http://videoportal.server.lan:8082',
+          'http://localhost:8081',
+          'http://localhost:8082',
+        ]
+    ),
+  // Fáze 2: TRUST_PROXY=1 = důvěřujeme X-Forwarded-For z reverzní proxy.
+  trustProxy: bool(process.env.TRUST_PROXY, false),
+}),
 
-  legal: Object.freeze({
+session: Object.freeze({
+  cookieName: process.env.SESSION_COOKIE_NAME || 'sessionId',
+  // Fáze 2: 14 dní perzistentní cookie (bylo 7).
+  ttlMs: int(process.env.SESSION_TTL_MS, 14 * 24 * 60 * 60 * 1000),
+  secret: process.env.SESSION_SECRET || 'change-me-in-production-please',
+}),
+
+legal: Object.freeze({
     currentTosVersion: process.env.CURRENT_TOS_VERSION || 'v1.0',
   }),
 });

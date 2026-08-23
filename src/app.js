@@ -27,17 +27,66 @@ const { seedDefaultData } = require('./modules/auth/seed');
 
 const viewsRoutes = require('./views/views.routes');
 
+const allowedOrigins = new Set(config.security.allowedOrigins);
+
+function buildCsp() {
+  return {
+    useDefaults: true,
+    directives: {
+      'default-src': ["'self'"],
+      'script-src':  ["'self'", "'unsafe-inline'"],
+      'style-src':   ["'self'", "'unsafe-inline'"],
+      'media-src':   ["'self'", 'https:', 'http:', 'blob:'],
+      'img-src':     ["'self'", 'data:', 'https:', 'http:'],
+      'connect-src': ["*"],
+      'frame-ancestors': ["'none'"],
+      'object-src':  ["'none'"],
+    },
+  };
+}
+
 function buildApp() {
   const app = express();
 
+  // Trust proxy za Nginx/Caddy/cloudflare.
+  if (config.security.trustProxy) {
+    app.set('trust proxy', 1);
+  }
+
   // ===== Bezpečnost =====
-  app.use(
-    helmet({
-      contentSecurityPolicy: false, // frontend může být na jiné doméně
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-    })
-  );
-  app.use(cors({ origin: true, credentials: true }));
+  app.use(helmet({
+    contentSecurityPolicy: buildCsp(),
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
+
+  // CORS whitelist (ne "origin: true" = povol vše).
+  app.use(cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);                 // curl, server-to-server
+      if (allowedOrigins.has(origin)) return cb(null, true);
+      return cb(new Error(`CORS: origin '${origin}' není povolen`));
+    },
+    credentials: true,
+  }));
+
+  // ===== Rate limiting =====
+  // 1) Globální: 100 req/min/IP na celé /api (health vyjmut).
+  app.use('/api', rateLimit({
+    windowMs: 60_000, max: 100,
+    skip: (req) => req.path === '/health',
+  }));
+
+  // 2) Login: 5 pokusů / 15 min / IP.
+  app.use('/api/auth/login', rateLimit({
+    windowMs: 15 * 60_000, max: 5,
+    message: 'Příliš mnoha pokusů o přihlášení. Zkuste to znovu za 15 minut.',
+  }));
+
+  // 3) Registrace: 3 / hod / IP.
+  app.use('/api/auth/register', rateLimit({
+    windowMs: 60 * 60_000, max: 3,
+    message: 'Příliš mnoho registrací z této IP. Zkuste to znovu za hodinu.',
+  }));
 
   // ===== Body parsers =====
   app.use(express.json({ limit: '1mb' }));

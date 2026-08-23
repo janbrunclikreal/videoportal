@@ -24,10 +24,17 @@ function getDb() {
   if (db) return db;
   const dbPath = ensureDbDir();
   db = new Database(dbPath);
+  // Fáze 2: vyladěné SQLite PRAGMA pro propustnost a bezpečnost.
+  //  - journal_mode = WAL: čtení neblokují zápis a naopak.
+  //  - synchronous = NORMAL: mírně slabší odolnost proti výpadku napájení,
+  //    ale výrazně vyšší propustnost; v kombinaci s WAL je to standard.
+  //  - foreign_keys = ON: referenční integrita (jinak SQLite implicitně OFF).
+  //  - busy_timeout = 5000: když je DB zamčená, čeká 5s místo okamžité chyby.
   db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
-  writeLog(LOG_TYPES.DATABASE, `Databáze otevřena: ${dbPath}`);
+  writeLog(LOG_TYPES.DATABASE, `Databáze otevřena: ${dbPath} (WAL, synchronous=NORMAL)`);
   return db;
 }
 

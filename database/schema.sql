@@ -171,3 +171,26 @@ CREATE TABLE IF NOT EXISTS tos_versions (
     created_by INTEGER,
     FOREIGN KEY(created_by) REFERENCES users(id)
 );
+
+-- ===== Fáze 2: Perzistentní sessions =====
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
+-- videos – kompozitní index pro hlavní filtr výpisů
+CREATE INDEX IF NOT EXISTS idx_videos_access
+  ON videos(status, visibility, deleted_at, upload_date DESC);
+CREATE INDEX IF NOT EXISTS idx_videos_user_id ON videos(user_id);
+CREATE INDEX IF NOT EXISTS idx_videos_category_id ON videos(category_id);
+
+-- comments + video_views
+CREATE INDEX IF NOT EXISTS idx_comments_video_id
+  ON comments(video_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_video_views_lookup
+  ON video_views(video_id, user_id);

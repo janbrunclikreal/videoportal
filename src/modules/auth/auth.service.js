@@ -1,5 +1,7 @@
 'use strict';
 
+const config = require('../../config');
+
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
@@ -133,25 +135,49 @@ function hasPermission(user, permission) {
   return user.permissions.includes(permission);
 }
 
-// ===== Session (in-memory jako v monolitiu) =====
-const sessions = new Map();
-
+// ===== Session (Fáze 2: perzistentní v SQLite) =====
+// API beze změny: createSession / getSession / destroySession. Storage se
+// přesunul z in-memory `Map` do tabulky `sessions` – sessions přežijí restart
+// kontejneru. Lazy cleanup expired řádků proběhne při getSession (1% šance
+// na každý lookup, aby to nebylo za trest).
 function generateSessionId() {
   return crypto.randomBytes(32).toString('hex');
 }
 
 function createSession(userId) {
   const id = generateSessionId();
-  sessions.set(id, { userId, createdAt: Date.now() });
+  const ttlMs = config.session.ttlMs;
+  const expiresAt = new Date(Date.now() + ttlMs);
+  db.run(
+    `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`,
+    [id, userId, expiresAt.toISOString()]
+  );
   return id;
 }
 
 function destroySession(sessionId) {
-  if (sessionId) sessions.delete(sessionId);
+  if (!sessionId) return;
+  db.run(`DELETE FROM sessions WHERE id = ?`, [sessionId]);
 }
 
 function getSession(sessionId) {
-  return sessionId ? sessions.get(sessionId) : undefined;
+  if (!sessionId) return undefined;
+  // Lazy cleanup 1% případů – odstraní prošlé sessions.
+  if (Math.random() < 0.01) {
+    try {
+      db.run(`DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP`);
+    } catch (err) {
+      writeLog(LOG_TYPES.WARNING, 'Session cleanup selhal', { error: err.message });
+    }
+  }
+  const { row } = db.get(
+    `SELECT id, user_id, created_at, expires_at
+     FROM sessions
+     WHERE id = ? AND expires_at > CURRENT_TIMESTAMP`,
+    [sessionId]
+  );
+  if (!row) return undefined;
+  return { userId: row.user_id, createdAt: row.created_at, expiresAt: row.expires_at };
 }
 
 module.exports = {
